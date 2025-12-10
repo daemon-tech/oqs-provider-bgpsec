@@ -5,6 +5,34 @@
 oqsprovider - Open Quantum Safe provider for OpenSSL (3.x)
 ==========================================================
 
+Post-Quantum BGPsec Implementation
+-----------------------------------
+
+Author: Sam Moes
+Date: December 2024
+
+This fork extends oqs-provider to enable complete post-quantum secure BGPsec certificate chains using Falcon-512. The implementation provides the first end-to-end post-quantum BGPsec chain with zero classical cryptography.
+
+What has been accomplished:
+
+- Complete Falcon-512 certificate chain generation
+  - CA certificate using pure Falcon-512 keys and signatures
+  - Router end-entity certificates using pure Falcon-512, signed by the CA
+  - Full certificate chain validation
+
+- BGPsec path signature support
+  - 15-hop path signatures using Falcon-512
+  - All signatures validated against the certificate chain
+  - Complete path validation from CA to final hop
+
+- Zero classical cryptography
+  - No RSA signatures
+  - No ECDSA signatures
+  - No hybrid fallback algorithms
+  - Pure post-quantum cryptography throughout the entire chain
+
+The build-pq-bgpsec-chain.sh script generates a complete post-quantum BGPsec trust chain where every cryptographic operation uses Falcon-512, from the root CA certificate down to the last path signature. This eliminates the technical barrier for deploying post-quantum secure BGPsec in production.
+
 Purpose
 -------
 
