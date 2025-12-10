@@ -1,0 +1,20 @@
+# OpenSSL configuration for BGPsec with Falcon-512
+# Usage: export OPENSSL_CONF=/code/bgpsec-openssl.cnf
+
+openssl_conf = openssl_init
+
+[openssl_init]
+providers = provider_sect
+
+[provider_sect]
+default = default_sect
+oqsprovider = oqsprovider_sect
+
+[default_sect]
+activate = 1
+
+[oqsprovider_sect]
+# Path to the provider module (adjust if needed)
+module = /code/build/lib/oqsprovider.so
+activate = 1
+
