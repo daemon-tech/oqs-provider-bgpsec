@@ -1,4 +1,8 @@
 # OpenSSL configuration for BGPsec with Falcon-512
+#
+# Author: Sam Moes
+# Date: December 2024
+#
 # Usage: export OPENSSL_CONF=/code/bgpsec-openssl.cnf
 
 openssl_conf = openssl_init

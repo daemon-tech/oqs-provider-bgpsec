@@ -1,3 +1,7 @@
+# Dockerfile for building post-quantum BGPsec chain
+# Author: Sam Moes
+# Date: December 2024
+
 FROM ubuntu:24.04
 
 RUN apt update && apt install -y \

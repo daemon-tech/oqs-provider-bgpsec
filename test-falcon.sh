@@ -1,5 +1,10 @@
 #!/bin/bash
+#
 # Quick test script for Falcon-512 in Docker container
+#
+# Author: Sam Moes
+# Date: December 2024
+#
 
 # First, find where the provider actually is
 PROVIDER_PATH="/code/build/_build/lib/ossl-modules"

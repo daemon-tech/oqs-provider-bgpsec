@@ -2,12 +2,15 @@
 #
 # Build Complete Post-Quantum BGPsec Chain
 # =========================================
-# 
+#
+# Author: Sam Moes
+# Date: December 2024
+#
 # Goal: One command that produces:
 #   - Falcon-512 CA certificate
 #   - Falcon-512 router (EE) certificate (signed by CA)
 #   - BGPsec 15-hop path signatures (signed with router cert)
-#   - Full validation chain (CA → Router → Path → CA)
+#   - Full validation chain (CA to Router to Path to CA)
 #
 # Requirements: Pure Falcon-512, zero classical crypto
 #   - No RSA
@@ -59,7 +62,7 @@ if ! $OPENSSL_CMD list -signature-algorithms $PROV_FLAGS | grep -q falcon512; th
     echo -e "${RED}ERROR: Falcon-512 not available in provider${NC}"
     exit 1
 fi
-echo -e "${GREEN}✓ Falcon-512 available${NC}"
+echo -e "${GREEN}[OK] Falcon-512 available${NC}"
 echo ""
 
 # Clean up any previous run
@@ -97,7 +100,7 @@ authorityKeyIdentifier = keyid:always
 EOF
 )
 
-echo -e "${GREEN}✓ CA certificate created${NC}"
+echo -e "${GREEN}[OK] CA certificate created${NC}"
 $OPENSSL_CMD x509 $PROV_FLAGS -in "$CA_DIR/certs/ca-falcon.crt" -text -noout | grep -E "(Signature Algorithm|Public Key Algorithm|Subject:)"
 echo ""
 
@@ -158,7 +161,7 @@ EOF
     -extensions bgpsec_router \
     -days 365
 
-echo -e "${GREEN}✓ Router certificate created and signed by CA${NC}"
+echo -e "${GREEN}[OK] Router certificate created and signed by CA${NC}"
 $OPENSSL_CMD x509 $PROV_FLAGS -in "$ROUTER_DIR/router-falcon.crt" -text -noout | grep -E "(Signature Algorithm|Public Key Algorithm|Subject:)"
 echo ""
 
@@ -167,9 +170,9 @@ echo -e "${YELLOW}[4/8] Verifying certificate chain...${NC}"
 if $OPENSSL_CMD verify $PROV_FLAGS \
     -CAfile "$CA_DIR/certs/ca-falcon.crt" \
     "$ROUTER_DIR/router-falcon.crt"; then
-    echo -e "${GREEN}✓ Certificate chain validates${NC}"
+    echo -e "${GREEN}[OK] Certificate chain validates${NC}"
 else
-    echo -e "${RED}✗ Certificate chain validation failed${NC}"
+    echo -e "${RED}[FAIL] Certificate chain validation failed${NC}"
     exit 1
 fi
 echo ""
@@ -237,9 +240,9 @@ EOF
         -CAfile "$CA_DIR/certs/ca-falcon.crt" \
         "$ROUTER_DIR/router-$i.crt" > /dev/null
     
-    echo -e "  ${GREEN}✓ Router $i (AS$ASN) certificate created${NC}"
+    echo -e "  ${GREEN}[OK] Router $i (AS$ASN) certificate created${NC}"
 done
-echo -e "${GREEN}✓ All 15 router certificates created${NC}"
+echo -e "${GREEN}[OK] All 15 router certificates created${NC}"
 echo ""
 
 # Extract Subject Key Identifiers for BGPsec path
@@ -254,7 +257,7 @@ for i in {0..15}; do
           grep -o '[0-9A-F:]*' | tr -d ':')
     echo "$SKI" > "$ROUTER_DIR/router-$i.ski"
 done
-echo -e "${GREEN}✓ SKIs extracted${NC}"
+echo -e "${GREEN}[OK] SKIs extracted${NC}"
 echo ""
 
 # Create BGPsec path signature structure (simplified - actual BGPsec requires full RFC 8205 implementation)
@@ -262,13 +265,13 @@ echo -e "${YELLOW}[7/8] Creating BGPsec path signature structure...${NC}"
 cat > "$OUTPUT_DIR/bgpsec-path-info.txt" <<EOF
 # Post-Quantum BGPsec 15-Hop Path
 # All signatures use Falcon-512
-# Path: AS65000 → AS65001 → ... → AS65015
+# Path: AS65000 to AS65001 to ... to AS65015
 
 CA Certificate: $CA_DIR/certs/ca-falcon.crt
-  └─ signs → Router 0 (AS65000): $ROUTER_DIR/router-falcon.crt
-      └─ signs → Router 1 (AS65001): $ROUTER_DIR/router-1.crt
-          └─ signs → Router 2 (AS65002): $ROUTER_DIR/router-2.crt
-              └─ ... (continues to Router 15)
+  signs Router 0 (AS65000): $ROUTER_DIR/router-falcon.crt
+      signs Router 1 (AS65001): $ROUTER_DIR/router-1.crt
+          signs Router 2 (AS65002): $ROUTER_DIR/router-2.crt
+              ... (continues to Router 15)
 
 All certificates validated against: $CA_DIR/certs/ca-falcon.crt
 All signatures use: Falcon-512 (pure post-quantum)
@@ -285,7 +288,7 @@ for i in {0..14}; do
     fi
     
     # Create a test message (in real BGPsec, this would be the path segment)
-    echo "BGPsec path segment: AS$((65000+i)) → AS$((65000+NEXT))" > "$OUTPUT_DIR/path-segment-$i.txt"
+    echo "BGPsec path segment: AS$((65000+i)) to AS$((65000+NEXT))" > "$OUTPUT_DIR/path-segment-$i.txt"
     
     # Sign with Falcon-512
     $OPENSSL_CMD dgst $PROV_FLAGS -sign "$KEY" \
@@ -306,9 +309,9 @@ for i in {0..14}; do
         -signature "$OUTPUT_DIR/path-segment-$i.sig" \
         "$OUTPUT_DIR/path-segment-$i.txt" > /dev/null
     
-    echo -e "  ${GREEN}✓ Path segment $i → $NEXT signed and verified${NC}"
+    echo -e "  ${GREEN}[OK] Path segment $i to $NEXT signed and verified${NC}"
 done
-echo -e "${GREEN}✓ All 15 path signatures created and verified${NC}"
+echo -e "${GREEN}[OK] All 15 path signatures created and verified${NC}"
 echo ""
 
 # Final validation
@@ -331,15 +334,15 @@ for i in {0..15}; do
     if ! $OPENSSL_CMD verify $PROV_FLAGS \
         -CAfile "$CA_DIR/certs/ca-falcon.crt" \
         "$CERT" > /dev/null 2>&1; then
-        echo -e "  ${RED}✗ Router $i certificate validation failed${NC}"
+        echo -e "  ${RED}[FAIL] Router $i certificate validation failed${NC}"
         ALL_VALID=false
     fi
 done
 
 if [ "$ALL_VALID" = true ]; then
-    echo -e "${GREEN}✓ All router certificates validate against CA${NC}"
+    echo -e "${GREEN}[OK] All router certificates validate against CA${NC}"
 else
-    echo -e "${RED}✗ Some certificates failed validation${NC}"
+    echo -e "${RED}[FAIL] Some certificates failed validation${NC}"
     exit 1
 fi
 
@@ -356,15 +359,15 @@ for i in {0..14}; do
     if ! $OPENSSL_CMD dgst $PROV_FLAGS -verify "$PUBKEY" \
         -signature "$OUTPUT_DIR/path-segment-$i.sig" \
         "$OUTPUT_DIR/path-segment-$i.txt" > /dev/null 2>&1; then
-        echo -e "  ${RED}✗ Path segment $i signature validation failed${NC}"
+        echo -e "  ${RED}[FAIL] Path segment $i signature validation failed${NC}"
         ALL_SIGS_VALID=false
     fi
 done
 
 if [ "$ALL_SIGS_VALID" = true ]; then
-    echo -e "${GREEN}✓ All path signatures validate${NC}"
+    echo -e "${GREEN}[OK] All path signatures validate${NC}"
 else
-    echo -e "${RED}✗ Some path signatures failed validation${NC}"
+    echo -e "${RED}[FAIL] Some path signatures failed validation${NC}"
     exit 1
 fi
 
@@ -379,10 +382,10 @@ echo "  Router Certificates:    $ROUTER_DIR/router-*.crt (Falcon-512, signed by 
 echo "  Path Signatures:       $OUTPUT_DIR/path-segment-*.sig (Falcon-512)"
 echo ""
 echo "Validation:"
-echo "  ✓ All certificates signed with Falcon-512"
-echo "  ✓ All path signatures use Falcon-512"
-echo "  ✓ Complete chain validates end-to-end"
-echo "  ✓ Zero classical cryptography"
+echo "  [OK] All certificates signed with Falcon-512"
+echo "  [OK] All path signatures use Falcon-512"
+echo "  [OK] Complete chain validates end-to-end"
+echo "  [OK] Zero classical cryptography"
 echo ""
 echo -e "${GREEN}Complete post-quantum secure BGPsec chain.${NC}"
 echo ""
